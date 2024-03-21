@@ -1,0 +1,4 @@
+A ansible job for the basic packages needed on my machines:
+
+- apt install git
+- apt install zip
