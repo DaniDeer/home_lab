@@ -2,3 +2,11 @@ A ansible job for the basic packages needed on my machines:
 
 - apt install git
 - apt install zip
+
+- sudo apt install apt-transport-https ca-certificates curl software-properties-common
+
+Eigener Job (bspw. für Monitoring Node):
+- Docker Engine
+- Docker Compose
+
+- Prometheus Metrics Scraper?
