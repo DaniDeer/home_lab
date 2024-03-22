@@ -1,0 +1,17 @@
+---
+# Provision Prometheus Node Exporter to a bare metal installed OS for monitoring the host system.
+#
+#
+# GitHub Repo prometheus-community/ansible: https://github.com/prometheus-community/ansible
+# Ansible-Galaxy collection prometheus.prometheus: https://galaxy.ansible.com/ui/repo/published/prometheus/prometheus/
+# Documentation of prometheus.node_exporter: https://prometheus-community.github.io/ansible/branch/main/node_exporter_role.html
+#
+#
+
+
+# Provide Prometheus Node exporter
+- hosts: prod
+  roles:
+    - prometheus.prometheus.node_exporter
+  vars:
+    node_exporter_version: "1.7.0"

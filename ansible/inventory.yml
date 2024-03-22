@@ -12,7 +12,7 @@ builder:
 
 monitoring:
   hosts:
-    monitoring:
+    monitoring_1:
       ansible_host: 192.168.10.42
       ansible_ssh_user: monitoring
 
