@@ -1,0 +1,12 @@
+---
+#  Restart the Prometheus service to apply the new configuration
+#
+# GitHub Repo prometheus-community/ansible: https://github.com/prometheus-community/ansible
+# Ansible-Galaxy collection community.docker.docker_container: https://docs.ansible.com/ansible/latest/collections/community/docker/docker_container_module.html
+#
+
+- name: Restart Prometheus service
+  community.docker.docker_container:
+    name: "{{ prometheus_container_name }}"
+    state: started
+    restart: true

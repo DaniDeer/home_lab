@@ -1,0 +1,9 @@
+---
+
+# Update Prometheus configuration and restart Prometheus service
+- name: Update Prometheus configuration
+  ansible.builtin.include_tasks:
+    file: update_prometheus_config.yml
+    apply:
+      become: true
+

@@ -10,8 +10,16 @@
 
 
 # Provide Prometheus Node exporter
-- hosts: prod
+- hosts: builder, controller, prod
   roles:
     - prometheus.prometheus.node_exporter
   vars:
     node_exporter_version: "1.7.0"
+
+# Update Prometheus configuration and restart Prometheus service
+- hosts: monitoring
+  roles:
+    - update_prometheus_config
+  vars:
+    prometheus_config_file: "/home/monitoring/prometheus/config/prometheus.yml"
+    prometheus_container_name: "prometheus"
