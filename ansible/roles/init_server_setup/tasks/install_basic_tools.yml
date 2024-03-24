@@ -1,0 +1,59 @@
+---
+
+# Install basic tools
+# 
+# # Ansible-Galaxy collection builtin.apt: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/apt_module.html
+#
+
+- name: Install basic tools
+  ansible.builtin.apt:
+    pkg:
+      # Examples: nginx=1.18.0; Wildcards: apt* or foo=1.0*
+      - curl
+      - vim
+      - wget
+      - unzip
+      - jq
+      - git
+      - gpg
+      - python3
+      - python3-pip
+      - python3-venv
+      - python3-dev
+      - build-essential
+      - ca-certificates
+      - libssl-dev
+      - libffi-dev
+      - libxml2-dev
+      - libxslt1-dev
+      - zlib1g-dev
+      - net-tools
+      - iputils-ping
+      - iproute2
+      - iptables
+      - dnsutils
+      - telnet
+      - ncat
+      - nmap
+      - tcpdump
+      - rsync
+      - htop
+      - iotop
+      - iftop
+      - sysstat
+      - strace
+      - lsof
+      - dstat
+      - atop
+      - mtr
+      - nload
+      - nethogs
+      - ntp
+      - iptraf
+      - iperf
+      - iperf3
+      - speedtest-cli
+      - stress
+      - stress-ng
+      # - ufw # Uncomplicated Firewall -> in case for later use
+    state: latest # default: present

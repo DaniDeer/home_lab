@@ -1,0 +1,20 @@
+---
+# Initial Server Setup for basic hardening:
+# - Create a sudo user and configure passwordless sudo
+# - Install basic packages
+# - DRAFT: Configure firewall
+#
+# Some tipps about initial server setup with Ansible: https://www.digitalocean.com/community/tutorials/how-to-use-ansible-to-automate-initial-server-setup-on-ubuntu-20-04
+#
+
+- name: Add sudo user and configure passwordless sudo
+  ansible.builtin.include_tasks:
+    file: add_sudo_user_and_configure_passwordless_sudo.yml
+
+- name: Install basic tools
+  ansible.builtin.include_tasks:
+    file: install_basic_tools.yml
+
+#- name: Add firewall protection
+#  ansible.builtin.include_tasks:
+#    file: add_firewall_protection.yml

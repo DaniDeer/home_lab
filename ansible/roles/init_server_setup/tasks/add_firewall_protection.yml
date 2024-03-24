@@ -1,0 +1,35 @@
+---
+# DRAFT: Add firewall protection to the server
+
+# Install basic tools
+# 
+# # Ansible-Galaxy collection builtin.apt: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/apt_module.html
+#
+
+- name: Install UFC Firewall
+  ansible.builtin.apt:
+    pkg:
+      # Examples: nginx=1.18.0; Wildcards: apt* or foo=1.0*
+      # - ufw # Uncomplicated Firewall -> in case for later use
+    state: latest # default: present
+
+
+# Firewall setup for the server
+#
+# Ansible-Galaxy collection builtin.ufw: https://docs.ansible.com/ansible/latest/collections/community/general/ufw_module.html
+#
+- name: UFW - Allow SSH connections
+  community.general.ufw:
+    rule: allow
+    name: OpenSSH
+
+- name: UFW - Enable and deny by default
+  community.general.ufw:
+    state: enabled
+    default: deny
+
+#- name: Allow port ranges
+#  community.general.ufw:
+#    rule: allow
+#    port: 1024:65535
+#    proto: tcp

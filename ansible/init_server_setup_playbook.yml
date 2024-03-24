@@ -1,0 +1,15 @@
+---
+# Initial Server Setup for basic hardening:
+# - Create a sudo user and configure passwordless sudo
+# - Install basic packages
+# - DRAFT: Configure firewall
+#
+# Some tipps about initial server setup with Ansible: https://www.digitalocean.com/community/tutorials/how-to-use-ansible-to-automate-initial-server-setup-on-ubuntu-20-04
+#
+
+- hosts: all
+  roles:
+    - init_server_setup
+  become: true
+  vars:
+    create_sudo_user: admin
