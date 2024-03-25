@@ -1,9 +1,12 @@
 A ansible job for the basic packages needed on my machines:
 
-- apt install git
-- apt install zip
 
-- sudo apt install apt-transport-https ca-certificates curl software-properties-common
+
+
+Diese Packages werden wohl für die Installation von Docker benötigt (zu den Pkgs, die bereits im Server-Init-Setup installiert werden):
+- sudo apt install 
+  - apt-transport-https 
+  - software-properties-common
 
 Eigener Job (bspw. für Monitoring Node):
 - Docker Engine
