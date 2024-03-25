@@ -41,11 +41,11 @@ k3s_prod:
         raspberry_3:
           ansible_host: 192.168.10.11
           ansible_ssh_user: ubuntu
-    agents:
-      hosts:
-        raspberry_4:
-          ansible_host: 192.168.10.42
-          ansible_ssh_user: raspi4
+    #agents: # no agents yet...
+    #  hosts:
+    #    raspberry_4:
+    #      ansible_host: 192.168.10.42
+    #      ansible_ssh_user: raspi4
 
 all:
   vars:
