@@ -1,4 +1,9 @@
+On some day, this could be a requirements.yml in an Ansible Execution Environment (DevContainer)...
+
 - ansible-galaxy collection install <collection>
 
 - prometheus.prometheus - 0.15.1
 https://prometheus-community.github.io/ansible/branch/main/node_exporter_role.html#ansible-collections-prometheus-prometheus-node-exporter-role
+
+- patrickjahns.promtail
+for promtail for log aggregation
