@@ -1,0 +1,80 @@
+---
+# Promtail configuration reference: https://grafana.com/docs/loki/latest/send-data/promtail/configuration/
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: "info"
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://gateway:80/loki/api/v1/push
+    tenant_id: docker
+    #external_labels:
+    #  job: promtail
+    #  host: localhost
+
+# local machine logs
+scrape_configs:
+
+  # Scrape var/log files
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          host: monitoring
+          __path__: /var/log/*log
+  
+  # Scrape apt logs
+  - job_name: apt 
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: aptlogs
+          host: monitoring
+          __path__: /var/log/apt/*log
+
+  # Scrape journal logs
+  - job_name: journal
+    journal:
+      max_age: 12h
+      path: /var/log/journal
+      labels:
+        job: systemd-journal
+        host: monitoring
+
+  # Scrape container logs 
+  # Con: requires promtail to be running as a container on the Docker host
+  # Better way is using the loki docker driver...
+  - job_name: docker_container
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        #filters:
+        #  - name: labels
+        #    values: ["logging=promtail"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'logstream'
+      - source_labels: ['__meta_docker_container_label_logging_jobname']
+        target_label: 'job'
+
+  # Apply this configuration with the loki docker driver plugin
+  #- job_name: docker
+  #  pipeline_stages:
+  #    - docker: {}
+  #  static_configs:
+  #    - targets:
+  #        - localhost
+  #      labels:
+  #        job: dockerlogs
+  #        host: monitoring
+  #        __path__: /var/lib/docker/containers/*/*-json.log

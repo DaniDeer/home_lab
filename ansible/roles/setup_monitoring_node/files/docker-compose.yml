@@ -1,0 +1,184 @@
+---
+version: "3.4"
+
+volumes:
+  grafana-data:
+    driver: local
+  #prometheus-data:
+  #  driver: local
+  minio-data:
+    driver: local
+  loki-data:
+    driver: local
+  ngnix-config:
+    driver: local
+
+networks:
+  monitoring:
+    driver: bridge
+
+services:
+  # Since the Loki containers are running as user 10001 and the mounted data volume is owned by root,
+  # Loki would not have permissions to create the directories.
+  # Therefore the init container changes permissions of the mounted directory.
+  init:
+    image: &lokiImage grafana/loki:latest
+    user: root
+    entrypoint:
+    - "chown"
+    - "10001:10001"
+    - "/loki"
+    volumes:
+      - loki-data:/loki
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    depends_on:
+      - gateway
+    #environment:
+    #  GF_AUTH_ANONYMOUS_ENABLED: "true"
+    #  GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    #  GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+    volumes:
+      #- ./config/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - grafana-data:/var/lib/grafana
+      # Later I will provide data sources in the datasource.yml file (also the Prometheus datasource)
+      # And I also provide the dashboard IDs for the standard monitoring and log dasboard
+    networks:
+      - monitoring
+    ports:
+      - 3000:3000
+
+  # Object store for logs
+  minio:
+    image: minio/minio:latest
+    # In case you have to build the image for ARMv7
+    #build: ./Dockerfile.armhf
+    #image: minio-arm
+    container_name: minio
+    restart: unless-stopped
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /data/loki-data && \
+        mkdir -p /data/loki-ruler && \
+        minio server --address "0.0.0.0:9000" --console-address "0.0.0.0:9001" /data
+    environment:
+      - MINIO_ROOT_USER=loki
+      - MINIO_ROOT_PASSWORD=supersecret
+      - MINIO_PROMETHEUS_AUTH_TYPE=public
+      - MINIO_UPDATE=off
+    volumes:
+      - minio-data:/data
+    networks:
+      - monitoring
+    ports:
+      - 9000:9000
+      - 9001:9001
+
+  loki-backend:
+    image: *lokiImage
+    container_name: loki-backend
+    restart: unless-stopped
+    # For Docker Swarm deployments
+    #deploy:
+    #  mode: replicated
+    #  replicas: 3
+    depends_on:
+      - minio
+    command: "-config.file=/etc/loki/loki-config.yml -target=backend -legacy-read-mode=false"
+    volumes:
+      - ./config/loki-config.yml:/etc/loki/loki-config.yml
+      #- ./rules:/loki/rules:ro
+    networks:
+      - monitoring
+    ports:
+      #- 3102:3100
+      - 3100
+      - 7946
+      - 9095
+
+  # Log aggregation read path
+  loki-read:
+    image: *lokiImage
+    container_name: loki-read
+    restart: unless-stopped
+    # For Docker Swarm deployments
+    #deploy:
+    #  mode: replicated
+    #  replicas: 3
+    depends_on:
+      - minio
+    command: "-config.file=/etc/loki/loki-config.yml -target=read -legacy-read-mode=false"
+    volumes:
+      - ./config/loki-config.yml:/etc/loki/loki-config.yml
+    networks:
+      - monitoring
+    ports:
+      #- 3101:3100
+      - 3100
+      - 7946
+      - 9095
+
+  # Log aggregation write path
+  loki-write:
+    image: *lokiImage
+    container_name: loki-write
+    restart: unless-stopped
+    # For Docker Swarm deployments
+    #deploy:
+    #  mode: replicated
+    #  replicas: 3
+    depends_on:
+      - minio
+    command: "-config.file=/etc/loki/loki-config.yml -target=write"
+    volumes:
+      - ./config/loki-config.yml:/etc/loki/loki-config.yml
+    networks:
+      - monitoring
+    ports:
+      #- 3102:3100
+      - 3100
+      - 7946
+      - 9095
+
+  gateway:
+    image: nginx:latest
+    container_name: gateway
+    restart: unless-stopped
+    depends_on:
+      - loki-read
+      - loki-write
+    volumes:
+      # Mount ngnix.conf file to the container to the default path for ngnix
+      - ./config/nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - monitoring
+    ports:
+      - 8080:80
+      - 3100
+      #- 9090
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    restart: unless-stopped
+    depends_on:
+      - gateway
+    command: "-config.file=/etc/promtail/promtail-config.yml"
+    volumes:
+      - ./config/promtail-config.yml:/etc/promtail/promtail-config.yml
+      # Syslog of host machine
+      - /var/log:/var/log      
+      # Docker logs of containers
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock    
+    networks:
+      - monitoring
+    ports:
+      - 9080
