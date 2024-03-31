@@ -23,3 +23,11 @@
   vars:
     prometheus_config_file: "/home/monitoring/prometheus/config/prometheus.yml"
     prometheus_container_name: "prometheus"
+
+# Provide Promtail agent for log aggregation in Loki
+#- hosts: builder
+#  roles:
+#    - patrickjahns.promtail
+#  vars:
+#    - promtail_version: 2.9.5
+    # to continue...
