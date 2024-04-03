@@ -1,0 +1,53 @@
+---
+# Grafana Mimir Docu: https://grafana.com/docs/mimir/latest/
+# Details about the configuration options: https://grafana.com/docs/mimir/latest/references/configuration-parameters/
+
+multitenancy_enabled: false
+usage_stats:
+  enabled: false
+
+server:
+  http_listen_port: 3200
+  log_level: info
+
+memberlist:
+  join_members: ["mimir-read", "mimir-write"]
+  bind_port: 7946
+
+common:
+  storage:
+    s3:
+      endpoint: minio:9000
+      access_key_id: loki
+      secret_access_key: supersecret
+      insecure: true
+
+blocks_storage:
+  s3:
+    bucket_name: mimir-blocks
+
+alertmanager_storage:
+  s3:
+    bucket_name: mimir-alertmanager
+
+ingester:
+  ring:
+    kvstore:
+      store: memberlist
+    replication_factor: 1
+
+
+ruler_storage:
+  s3:
+    bucket_name: mimir-ruler
+
+query_scheduler:
+  service_discovery_mode: "ring"
+
+overrides_exporter:
+  ring:
+    enabled: true
+    wait_stability_min_duration: 30s
+
+limits:
+  compactor_blocks_retention_period: 1y

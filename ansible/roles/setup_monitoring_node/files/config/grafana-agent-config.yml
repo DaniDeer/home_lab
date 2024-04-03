@@ -1,0 +1,23 @@
+---
+# See node_exporter_config here: https://grafana.com/docs/agent/latest/static/configuration/integrations/node-exporter-config/
+
+server:
+  log_level: info
+
+metrics:
+  wal_directory: /tmp/agent
+  global:
+    scrape_interval: 15s
+    remote_write:
+    - url: http://gateway:80/mimir/api/v1/push
+      #basic_auth:
+      #  username: admin
+      #  password: supersecret
+  
+integrations:
+  node_exporter:
+    enabled: true
+    rootfs_path: /host/root
+    sysfs_path: /host/sys
+    procfs_path: /host/proc
+    udev_data_path: /host/root/run/udev/data

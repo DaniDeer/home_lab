@@ -10,6 +10,8 @@ volumes:
     driver: local
   loki-data:
     driver: local
+  mimir-data:
+    driver: local
   ngnix-config:
     driver: local
 
@@ -30,6 +32,18 @@ services:
     - "/loki"
     volumes:
       - loki-data:/loki
+    networks:
+      - monitoring
+  
+  init2:
+    image: &mimirImage grafana/mimir:latest
+    user: root
+    entrypoint:
+    - "chown"
+    - "10001:10001"
+    - "/mimir"
+    volumes:
+      - mimir-data:/mimir
     networks:
       - monitoring
 
@@ -67,6 +81,9 @@ services:
       - |
         mkdir -p /data/loki-data && \
         mkdir -p /data/loki-ruler && \
+        mkdir -p /data/mimir-blocks && \
+        mkdir -p /data/mimir-ruler && \
+        mkdir -p /data/mimir-alertmanager && \
         minio server --address "0.0.0.0:9000" --console-address "0.0.0.0:9001" /data
     environment:
       - MINIO_ROOT_USER=loki
@@ -147,6 +164,66 @@ services:
       - 7946
       - 9095
 
+  mimir-backend:
+    image: *mimirImage
+    container_name: mimir-backend
+    restart: unless-stopped
+    # For Docker Swarm deployments
+    #deploy:
+    #  mode: replicated
+    #  replicas: 3
+    depends_on:
+      - minio
+    command: "-config.file=/etc/mimir/mimir-config.yml -target=backend"
+    volumes:
+      - ./config/mimir-config.yml:/etc/mimir/mimir-config.yml
+    networks:
+      - monitoring
+    ports:
+      #- 8003
+      - 3200
+      - 7946
+  
+  mimir-read:
+    image: *mimirImage
+    container_name: mimir-read
+    restart: unless-stopped
+    # For Docker Swarm deployments
+    #deploy:
+    #  mode: replicated
+    #  replicas: 3
+    depends_on:
+      - minio
+    command: "-config.file=/etc/mimir/mimir-config.yml -target=read"
+    volumes:
+      - ./config/mimir-config.yml:/etc/mimir/mimir-config.yml
+    networks:
+      - monitoring
+    ports:
+      #- 8001
+      - 3200
+      - 7946
+
+  mimir-write:
+    image: *mimirImage
+    container_name: mimir-write
+    restart: unless-stopped
+    # For Docker Swarm deployments
+    #deploy:
+    #  mode: replicated
+    #  replicas: 3
+    depends_on:
+      - minio
+    command: "-config.file=/etc/mimir/mimir-config.yml -target=write"
+    volumes:
+      - ./config/mimir-config.yml:/etc/mimir/mimir-config.yml
+    networks:
+      - monitoring
+    ports:
+      #- 8002
+      - 3200
+      - 7946
+
   gateway:
     image: nginx:latest
     container_name: gateway
@@ -163,6 +240,7 @@ services:
       - 8080:80
       - 3100
       #- 9090
+      - 3200
 
   promtail:
     image: grafana/promtail:latest
@@ -182,3 +260,24 @@ services:
       - monitoring
     ports:
       - 9080
+  
+  grafana-agent:
+    image: grafana/agent:latest
+    container_name: grafana-agent
+    restart: unless-stopped
+    depends_on:
+      - gateway
+    pid: "host"
+    cap_add:
+      - SYS_TIME
+    command: "-config.file=/etc/agent/grafana-agent-config.yml"
+    volumes:
+      - ./config/grafana-agent-config.yml:/etc/agent/grafana-agent-config.yml
+      - /:/host/root:ro,rslave
+      - /sys:/host/sys:ro,rslave
+      - /proc:/host/proc:ro,rslave
+      - /tmp/agent:/etc/agent
+    networks:
+      - monitoring
+    ports:
+      - 80

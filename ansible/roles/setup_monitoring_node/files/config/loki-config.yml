@@ -1,4 +1,6 @@
 ---
+# Grafana Loki Docu: https://grafana.com/docs/loki/latest/
+
 auth_enabled: false
 
 server:
