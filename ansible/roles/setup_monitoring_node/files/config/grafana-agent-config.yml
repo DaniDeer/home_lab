@@ -1,4 +1,11 @@
 ---
+# See Promeetheus metrics here: https://grafana.com/docs/agent/latest/static/configuration/metrics-config/
+# See Logs here: https://grafana.com/docs/agent/latest/static/configuration/logs-config/
+# See Traces here: https://grafana.com/docs/agent/latest/static/configuration/traces-config/
+
+# Examples: https://github.com/grafana/agent/blob/main/example/docker-compose/agent/config/agent.yaml
+
+# Integrations:
 # See node_exporter_config here: https://grafana.com/docs/agent/latest/static/configuration/integrations/node-exporter-config/
 
 server:
@@ -14,6 +21,93 @@ metrics:
       #  username: admin
       #  password: supersecret
   
+  # Monitor Tempo
+  # How To: https://grafana.com/docs/tempo/latest/operations/monitoring
+  # Dashboards, Alerts, Rules: https://github.com/grafana/tempo/tree/main/operations
+  # Runbook: https://github.com/grafana/tempo/blob/main/operations/tempo-mixin/runbook.md
+  configs:
+  - name: tempo
+    scrape_configs:
+    - job_name: tempo
+      static_configs:
+      #- targets:                     # For monitoring Tempo as a Service consiting of multiple components
+      #  - 'tempo-compactor:3200'     # this config could be enough, without seperation with label "component"
+      #  - 'tempo-distributor:3200'   # and Prometheus will label "instance" (e.g. "tempo-compactor:3200") by default.
+      #  - 'tempo-ingester:3200'
+      #  - 'tempo-querier:3200'
+      #  - 'tempo-query-frontend:3200'
+      #  - 'tempo-metrics-generator:3200'
+      #  labels:
+      #    cluster: monitoring
+      #    namespace: monitoring
+      - targets:
+        - 'tempo-compactor:3200'
+        labels:
+          cluster: monitoring
+          namespace: monitoring
+          component: compactor
+      - targets:
+          - 'tempo-distributor:3200'
+        labels:
+          cluster: monitoring
+          namespace: monitoring
+          component: distributor
+      - targets:
+          - 'tempo-ingester:3200'
+        labels:
+          cluster: monitoring
+          namespace: monitoring
+          component: ingester
+      - targets:
+          - 'tempo-querier:3200'
+        labels:
+          cluster: monitoring
+          namespace: monitoring
+          component: querier
+      - targets:
+          - 'tempo-query-frontend:3200'
+        labels:
+          cluster: monitoring
+          namespace: monitoring
+          component: query-frontend
+      - targets:
+          - 'tempo-metrics-generator:3200'
+        labels:
+          cluster: monitoring
+          namespace: monitoring
+          component: metrics-generator
+      #remote_write:
+      #- url: http://gateway:80/mimir/api/v1/push
+
+# Example Configs for Traces
+# Jaeger receiver: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.87.0/receiver/jaegerreceiver
+# OTLP receiver and remote write to Tempo: https://github.com/grafana/tempo/blob/main/example/docker-compose/agent/agent.yaml
+traces:
+  configs:
+  - name: default
+    remote_write:
+      - endpoint: tempo-distributor:4317
+        protocol: grpc                        # Default: grpc | Supported: grpc, http
+        insecure: true
+      #- endpoint: http://gateway:80/tempo/v1/traces
+    receivers:
+      jaeger:
+        protocols:
+          # grpc: 
+          #  endpoint: 0.0.0.0:14250      # Default: 0.0.0.0:14250
+          # thrift_binary: 
+          #  endpoint: 0.0.0.0:6832       # Default: 0.0.0.0:6832
+          thrift_compact: 
+            endpoint: 0.0.0.0:6831        # Default: 0.0.0.0:6831
+          #thrift_http:  
+          #  endpoint: 0.0.0.0:14268      # Default: 0.0.0.0:14268
+      #otlp:    # Default settings for OTLP
+      #  protocols:
+      #    grpc:
+      #      endpoint: "localhost:4317"
+      #    http:
+      #      endpoint: "localhost:4318"
+
 integrations:
   node_exporter:
     enabled: true

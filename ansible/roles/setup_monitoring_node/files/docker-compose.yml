@@ -1,6 +1,13 @@
 ---
 version: "3.4"
 
+# Mimir Deployment Mode Read-Write: https://grafana.com/docs/mimir/latest/references/architecture/deployment-modes/#read-write-mode
+# Loki Deployment Mode Read-Write: https://grafana.com/docs/loki/latest/get-started/deployment-modes/#simple-scalable
+# Tempo Deployment Mode Distributed: https://grafana.com/docs/tempo/latest/operations/architecture/
+# Tempo Jaeger tracing by setting enviornment variables: 
+#   https://github.com/jaegertracing/jaeger-client-go#environment-variables
+#   https://grafana.com/docs/tempo/latest/operations/monitor/?pg=traces&plcmt=options#traces
+
 volumes:
   grafana-data:
     driver: local
@@ -67,7 +74,7 @@ services:
     ports:
       - 3000:3000
 
-  # Object store for logs
+  # Object store for metrics, logs and traces
   minio:
     image: minio/minio:latest
     # In case you have to build the image for ARMv7
@@ -84,6 +91,7 @@ services:
         mkdir -p /data/mimir-blocks && \
         mkdir -p /data/mimir-ruler && \
         mkdir -p /data/mimir-alertmanager && \
+        mkdir -p /data/tempo-data && \
         minio server --address "0.0.0.0:9000" --console-address "0.0.0.0:9001" /data
     environment:
       - MINIO_ROOT_USER=loki
@@ -98,6 +106,7 @@ services:
       - 9000:9000
       - 9001:9001
 
+  # Loki in read-write mode
   loki-backend:
     image: *lokiImage
     container_name: loki-backend
@@ -164,6 +173,7 @@ services:
       - 7946
       - 9095
 
+  # Mimir in read-write mode
   mimir-backend:
     image: *mimirImage
     container_name: mimir-backend
@@ -224,6 +234,153 @@ services:
       - 3200
       - 7946
 
+  # Tempo in distributed mode
+  tempo-distributor:
+    image: grafana/tempo:latest
+    container_name: tempo-distributor
+    restart: unless-stopped
+    depends_on:
+      - minio
+    # Uncomment the following lines to enable tracing
+    environment:
+      - JAEGER_AGENT_HOST=grafana-agent
+      - JAEGER_AGENT_PORT=6831       # Default port is 6831
+    #  - JAEGER_ENDPOINT=             # If specified, the agent host/port are ignored
+      - JAEGER_SAMPLER_TYPE=const
+      - JAEGER_SAMPLER_PARAM=1
+    command: "-config.file=/etc/tempo/tempo-config.yml -target=distributor"
+    volumes:
+      - ./config/tempo-config.yml:/etc/tempo/tempo-config.yml
+    networks:
+      - monitoring
+    ports:
+      - 3200  # tempo
+      - 7946  # tempo memberlist
+      - 9095  # tempo grpc
+      - 4317  # otlp grpc
+      - 4318  # otlp http
+      - 14250 # Jaeger grpc ingest
+      - 6832  # Jaeger thrift binary ingest
+      - 6831  # Jaeger thrift compact ingest
+      - 14268 # Jaeger thrift_http ingest
+      #- 9411  # zipkin 
+
+  tempo-ingester:
+    image: grafana/tempo:latest
+    container_name: tempo-ingester
+    restart: unless-stopped
+    depends_on:
+      - minio
+    # Uncomment the following lines to enable tracing
+    environment:
+      - JAEGER_AGENT_HOST=grafana-agent
+      - JAEGER_AGENT_PORT=6831       # Default port is 6831
+    #  - JAEGER_ENDPOINT=             # If specified, the agent host/port are ignored
+      - JAEGER_SAMPLER_TYPE=const
+      - JAEGER_SAMPLER_PARAM=1
+    command: "-config.file=/etc/tempo/tempo-config.yml -target=ingester"
+    volumes:
+      - ./config/tempo-config.yml:/etc/tempo/tempo-config.yml
+    networks:
+      - monitoring
+    ports:
+      - 3200
+      - 7946
+      - 9095
+
+  tempo-querier:
+    image: grafana/tempo:latest
+    container_name: tempo-querier
+    restart: unless-stopped
+    depends_on:
+      - minio
+    # Uncomment the following lines to enable tracing
+    environment:
+      - JAEGER_AGENT_HOST=grafana-agent
+      - JAEGER_AGENT_PORT=6831       # Default port is 6831
+    #  - JAEGER_ENDPOINT=             # If specified, the agent host/port are ignored
+      - JAEGER_SAMPLER_TYPE=const
+      - JAEGER_SAMPLER_PARAM=1
+    command: "-config.file=/etc/tempo/tempo-config.yml -target=querier"
+    volumes:
+      - ./config/tempo-config.yml:/etc/tempo/tempo-config.yml
+    networks:
+      - monitoring
+    ports:
+      - 3200
+      - 7946
+      - 9095
+
+  tempo-query-frontend:
+    image: grafana/tempo:latest
+    container_name: tempo-query-frontend
+    restart: unless-stopped
+    depends_on:
+      - minio
+    # Uncomment the following lines to enable tracing
+    environment:
+      - JAEGER_AGENT_HOST=grafana-agent
+      - JAEGER_AGENT_PORT=6831       # Default port is 6831
+    #  - JAEGER_ENDPOINT=             # If specified, the agent host/port are ignored
+      - JAEGER_SAMPLER_TYPE=const
+      - JAEGER_SAMPLER_PARAM=1
+    command: "-config.file=/etc/tempo/tempo-config.yml -target=query-frontend"
+    volumes:
+      - ./config/tempo-config.yml:/etc/tempo/tempo-config.yml
+    networks:
+      - monitoring
+    ports:
+      - 3200
+      - 7946
+      - 9095
+  
+  tempo-compactor:
+    image: grafana/tempo:latest
+    container_name: tempo-compactor
+    restart: unless-stopped
+    depends_on:
+      - minio
+    # Uncomment the following lines to enable tracing
+    environment:
+      - JAEGER_AGENT_HOST=grafana-agent
+      - JAEGER_AGENT_PORT=6831       # Default port is 6831
+    #  - JAEGER_ENDPOINT=             # If specified, the agent host/port are ignored
+      - JAEGER_SAMPLER_TYPE=const
+      - JAEGER_SAMPLER_PARAM=1
+    command: "-config.file=/etc/tempo/tempo-config.yml -target=compactor"
+    volumes:
+      - ./config/tempo-config.yml:/etc/tempo/tempo-config.yml
+    networks:
+      - monitoring
+    ports:
+      - 3200
+      - 7946
+      - 9095
+
+  tempo-metrics-generator:
+    image: grafana/tempo:latest
+    container_name: tempo-metrics-generator
+    restart: unless-stopped
+    depends_on:
+      - minio
+    # Uncomment the following lines to enable tracing
+    environment:
+      - JAEGER_AGENT_HOST=grafana-agent
+      - JAEGER_AGENT_PORT=6831       # Default port is 6831
+    #  - JAEGER_ENDPOINT=             # If specified, the agent host/port are ignored
+      - JAEGER_SAMPLER_TYPE=const
+      - JAEGER_SAMPLER_PARAM=1
+    command: "-config.file=/etc/tempo/tempo-config.yml -target=metrics-generator"
+    volumes:
+      - ./config/tempo-config.yml:/etc/tempo/tempo-config.yml
+    networks:
+      - monitoring
+    ports:
+      - 3200
+      - 7946
+      - 9095
+
+  # Gateway for Mimir, Loki and Tempo
   gateway:
     image: nginx:latest
     container_name: gateway
@@ -280,4 +437,11 @@ services:
     networks:
       - monitoring
     ports:
-      - 80
+      #- 80
+      #- 4317  # otlp grpc
+      #- 4318  # otlp http
+      - 6831  # jaeger thrift compact
+      #- 6832  # jaeger thrift binary
+      #- 14250 # jaeger grpc
+      #- 14268 # jaeger thrift_http
+      #- 9411  # zipkin 

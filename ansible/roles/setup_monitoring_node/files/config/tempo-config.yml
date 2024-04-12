@@ -1,0 +1,91 @@
+---
+# Grafana Tempo Docu: https://grafana.com/docs/tempo/latest
+# Details about the configuration options: https://grafana.com/docs/tempo/latest/configuration
+
+usage_report:
+    reporting_enabled: false
+
+http_api_prefix: "/tempo"
+
+server:
+  http_listen_port: 3200
+  grpc_listen_port: 9095
+  log_level: info
+
+memberlist:
+  abort_if_cluster_join_fails: false
+#  join_members:
+#  - ingester-0:7946
+#  - ingester-1:7946
+#  - ingester-2:7946
+  join_members: ["tempo-ingester", "tempo-distributor", "tempo-compactor", "tempo-querier", "tempo-query-frontend", "tempo-metrics-generator"]
+  bind_port: 7946
+
+storage:
+  trace:
+    backend: s3
+    s3:
+      bucket: tempo-data
+      endpoint: minio:9000
+      access_key: loki
+      secret_key: supersecret
+      insecure: true
+    wal:
+      path: /tmp/tempo/wal
+    local:
+      path: /tmp/tempo/blocks
+
+distributor:
+  receivers:                           # this configuration will listen on all ports and protocols that tempo is capable of.
+    #jaeger:                            # the receives all come from the OpenTelemetry collector.  more configuration information can
+    #  protocols:                       # be found there: https://github.com/open-telemetry/opentelemetry-collector/tree/main/receiver
+        #thrift_http:                   #
+        #grpc:                          # for a production deployment you should only enable the receivers you need!
+        #thrift_binary:
+        #  endpoint: "localhost:6832"
+        #thrift_compact:
+        #  endpoint: 0.0.0.0:6831
+    #zipkin:
+    otlp:
+      protocols:
+    #    http:
+    #      endpoint: "localhost:4318"    # Default http  endpoint for the OpenTelemetry collector 0.0.0.0:4318
+        grpc:
+          endpoint: 0.0.0.0:4317    # Default grpc endpoint for the OpenTelemetry collector 0.0.0.0:4317
+    #opencensus:
+
+ingester:
+  lifecycler:
+    ring:
+      kvstore:
+        store: memberlist
+      replication_factor: 1
+
+querier:
+  frontend_worker:
+    frontend_address: tempo-query-frontend:9095
+
+compactor:
+  ring:
+    kvstore:
+      store: memberlist
+
+metrics_generator:
+  ring:
+    kvstore:
+      store: memberlist
+  registry:
+    collection_interval: 15s
+    external_labels:
+      source: tempo
+      cluster: monitoring
+  storage:
+    path: /tmp/tempo/generator/wal
+    remote_write:
+      - url: http://gateway:80/mimir/api/v1/push
+        send_exemplars: true
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors: ['service-graphs', 'span-metrics']
