@@ -7,6 +7,10 @@ version: "3.4"
 # Tempo Jaeger tracing by setting enviornment variables: 
 #   https://github.com/jaegertracing/jaeger-client-go#environment-variables
 #   https://grafana.com/docs/tempo/latest/operations/monitor/?pg=traces&plcmt=options#traces
+#
+# cadvisor basic setup: https://blog.devops.dev/real-time-docker-container-monitoring-with-prometheus-and-grafana-498078334a99
+#     And also make sure to deal with cgroup v2 issue adding 'cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory' to /boot/cmdline.txt
+#
 
 volumes:
   grafana-data:
