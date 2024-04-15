@@ -431,7 +431,10 @@ services:
     volumes:
       - ./config/grafana-agent-config.yml:/etc/agent/grafana-agent-config.yml
       - /:/host/root:ro,rslave
+      - /var/run:/host/var/run:ro,rslave
       - /sys:/host/sys:ro,rslave
+      - /var/lib/docker/:/var/lib/docker:ro,rslave
+      - /dev/disk/:/dev/disk:ro,rslave
       - /proc:/host/proc:ro,rslave
       - /tmp/agent:/etc/agent
     networks:
@@ -445,3 +448,36 @@ services:
       #- 14250 # jaeger grpc
       #- 14268 # jaeger thrift_http
       #- 9411  # zipkin 
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    restart: unless-stopped
+    depends_on:
+      - gateway
+    pid: "host"     # Needs to be set to "host" to get correct metrics
+    privileged: true
+    devices:
+      - "/dev/kmsg"
+    # Check for cadvisor runtime options here: https://github.com/google/cadvisor/blob/master/docs/runtime_options.md
+    # Other options used: "--enable_load_reader=false"
+    command: ["--disable_metrics=referenced_memory", "--enable_metrics=advtcp,app,cpu,cpuLoad,cpu_topology,cpuset,disk,diskIO,hugetlb,memory,memory_numa,network,oom_event,percpu,perf_event,process,resctrl,sched,tcp,udp"]
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+      - /cgroup:/cgroup:ro
+    networks:
+      - monitoring
+    ports:
+      - 8080
+
+  diagnose:
+    image: debian:bullseye
+    container_name: diagnose
+    restart: unless-stopped
+    command: tail -f /dev/null # Keeps the container running in the foreground
+    networks:
+      - monitoring

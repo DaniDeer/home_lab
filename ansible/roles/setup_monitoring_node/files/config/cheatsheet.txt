@@ -1,0 +1,56 @@
+Backup 
+
+# my global config
+global:
+  scrape_interval: 15s # Set the scrape interval to every 15 seconds.
+  
+  # scrape_timeout is set to the global default (10s).
+  # Attach these labels to any time series or alerts when communicating with
+  # external systems (federation, remote storage, Alertmanager).
+  external_labels:
+      monitor: 'codelab-monitor'
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['prometheus:9090']
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['node_exporter:9100','192.168.10.4:9100','192.168.10.6:9100','192.168.10.11:9100','192.168.10.20:9100']
+
+
+
+scp -r /home/daniel/GitClone/home_lab/ansible/roles/setup_monitoring_node//files/ raspi5@192.168.10.120:/home/raspi5/monitoring
+
+
+sudo docker build -t minio-arm -f Dockerfile.armhf .
+
+sudo docker run -d minio-arm
+
+sudo docker exec -it minio_object_store /bin/bash
+
+Legacy docker compose v1
+sudo docker-compose -f docker-compose.yml up -d --force-recreate
+New docker compose v2
+sudo docker compose -f docker-compose.yml up -d --force-recreate
+
+Just recreate a specific container
+sudo docker compose -f docker-compose.yml up -d --force-recreate <container>
+
+Just pull up new containers
+sudo docker compose -f docker-compose.yml up -d
+
+sudo docker up
+sudo docker up --scale <service>=3 --scale ...
+
+docker stop container_name_or_id && docker rm container_name_or_id
+sudo docker container stop $(sudo docker container ls -q)
+
+Restart all container with the prefix "tempo-"
+sudo docker ps --filter "name=tempo-" -q | xargs -r sudo docker restart
+
+List Ips of all containers
+docker inspect -f '{{.Name}} - {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(docker ps -aq)
+
+

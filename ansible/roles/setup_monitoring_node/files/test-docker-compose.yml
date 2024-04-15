@@ -1,0 +1,31 @@
+---
+
+networks:
+  test-app:
+    driver: bridge
+
+services:
+  test-app:
+    image: nginx:latest
+    container_name: test-app
+    restart: unless-stopped
+    networks:
+      - test-app
+    ports:
+      - "8081:80"
+  test-app2:
+    image: nginx:latest
+    container_name: test-app2
+    restart: unless-stopped
+    networks:
+      - test-app
+    ports:
+      - "8082:80"
+  test-app3:
+    image: nginx:latest
+    container_name: test-app3
+    restart: unless-stopped
+    networks:
+      - test-app
+    ports:
+      - "8083:80"

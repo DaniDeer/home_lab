@@ -15,7 +15,7 @@ metrics:
   wal_directory: /tmp/agent
   global:
     scrape_interval: 15s
-    remote_write:
+    remote_write:     # Remote write endpoint for all metrics specified below
     - url: http://gateway:80/mimir/api/v1/push
       #basic_auth:
       #  username: admin
@@ -76,8 +76,26 @@ metrics:
           cluster: monitoring
           namespace: monitoring
           component: metrics-generator
-      #remote_write:
-      #- url: http://gateway:80/mimir/api/v1/push
+  - name: docker
+    scrape_configs:
+    - job_name: docker
+      static_configs:
+      - targets:
+        - cadvisor:8080
+        labels:
+          cluster: monitoring
+          namespace: monitoring
+          component: docker
+  - name: docker-daemon
+    scrape_configs:
+    - job_name: docker-daemon
+      static_configs:
+      - targets:
+        - "172.17.0.1:9323"   # Docker daemon metrics, check with ip addr and look for docker0 | Better solution? Start an extra agent with network_mode: host
+        #labels:
+        #  cluster: monitoring
+        #  namespace: monitoring
+        #  component: docker
 
 # Example Configs for Traces
 # Jaeger receiver: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.87.0/receiver/jaegerreceiver
